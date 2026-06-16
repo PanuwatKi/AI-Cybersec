@@ -1,0 +1,5 @@
+# ไลบรารีเสริมสำหรับโหมดเสียง (--listen / --wav) ติดตั้งเมื่อจะใช้เท่านั้น
+# faster-whisper: ถอดเสียงไทยแบบออฟไลน์ เร็วกว่า whisper ปกติบน CPU
+faster-whisper
+sounddevice
+soundfile

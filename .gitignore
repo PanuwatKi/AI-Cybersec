@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# โมเดลที่เทรนแล้ว (สร้างใหม่ได้ด้วย python train_model.py)
+*.pkl
+
+# ไฟล์ระบบ
+.DS_Store
+Thumbs.db
+
+# Claude Code (เฉพาะเครื่อง ไม่ต้องขึ้น repo)
+.claude/
