@@ -1,4 +1,6 @@
-# 🧩 Lean / Idea Canvas — AI คัดกรองสายมิจฉาชีพ 3 สี
+# 🧩 Lean / Idea Canvas — SAFE (Scam Alert For Everyone)
+
+> ระบบ AI คัดกรองสายมิจฉาชีพ 3 สี
 
 ใช้ส่งกรรมการ (ส่วน Problem & Value) และเตรียมตอน Day 1 ก่อนขึ้น Prototype
 

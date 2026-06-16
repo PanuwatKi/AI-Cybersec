@@ -53,7 +53,7 @@ class ScamDetectorApp:
         self.whisper_size = whisper_size
         self.whisper = None  # โหลดตอนกดอัดเสียงครั้งแรก
 
-        root.title("🛡️ ระบบ AI คัดกรองสายมิจฉาชีพ")
+        root.title("🛡️ SAFE — Scam Alert For Everyone | ระบบคัดกรองสายมิจฉาชีพ")
         root.geometry("960x680")
         root.configure(bg="#263238")
 
