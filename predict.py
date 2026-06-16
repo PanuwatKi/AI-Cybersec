@@ -13,6 +13,17 @@
 
 ไลบรารีโหมดเสียง (ติดตั้งเพิ่มเมื่อจะใช้ ดู requirements-audio.txt):
     pip install faster-whisper sounddevice soundfile
+
+============================ แผนผังโครงสร้างโค้ด (Code Map) ============================
+  text_tokenize()      : ตัดประโยคไทยเป็นคำ ๆ (ต้องชื่อเดียวกับตอนเทรน vectorizer)
+  ANSI / *_THRESHOLD   : ค่าคงที่ — โค้ดสีบนจอ และเกณฑ์ % ที่ใช้แบ่งแดง/เหลือง/เขียว
+  classify()           : หัวใจของระบบ — รับข้อความ คืน สี + % ความมั่นใจ
+  _scam_logodds()      : ตัวช่วยคำนวณความเอนเอียงไปทางมิจฉาชีพ (ใช้ใน explain_words)
+  explain_words()      : บอกว่า "คำไหน" ทำให้ AI ตัดสินว่าเป็นมิจฉาชีพ
+  show_and_send()      : แสดงผลเป็นแถบสีบนจอ + ส่งสัญญาณสีไปบอร์ด Arduino
+  load_whisper() / transcribe() / record_mic() : ส่วนโหมดเสียง (เสียง -> ข้อความ)
+  main()               : ตัวควบคุมหลัก อ่าน argument แล้วเลือกโหมด (พิมพ์/เสียง/ไฟล์)
+=====================================================================================
 """
 import argparse
 import os
@@ -118,6 +129,7 @@ def show_and_send(text, model, vectorizer, ser):
 
 # ---------------- โหมดเสียง (โหลดเฉพาะตอนใช้ เพื่อให้โหมดพิมพ์เบาและเสถียร) ----------------
 def load_whisper(model_size):
+    """โหลดโมเดลถอดเสียง Whisper (เรียกครั้งเดียวพอ เพราะโหลดช้า)"""
     from faster_whisper import WhisperModel
     print(f"⏳ กำลังโหลดโมเดลถอดเสียง Whisper ({model_size}) ... (ครั้งแรกอาจดาวน์โหลดสักครู่)")
     return WhisperModel(model_size, device="cpu", compute_type="int8")
@@ -130,6 +142,7 @@ def transcribe(whisper_model, audio):
 
 
 def record_mic(seconds, samplerate=16000, device=None):
+    """อัดเสียงจากไมโครโฟนตามจำนวนวินาทีที่กำหนด คืนเป็นคลื่นเสียง (numpy array)"""
     import sounddevice as sd
     print(f"🎙️  กำลังอัดเสียง {seconds} วินาที... พูดได้เลย")
     audio = sd.rec(int(seconds * samplerate), samplerate=samplerate,
@@ -139,6 +152,7 @@ def record_mic(seconds, samplerate=16000, device=None):
 
 
 def main():
+    """ตัวควบคุมหลัก: อ่าน argument -> โหลดโมเดล -> เลือกโหมดทำงาน (ไฟล์เสียง/อัดสด/พิมพ์)"""
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", help="พอร์ตบอร์ด Arduino เช่น COM3 (ไม่ใส่ = ไม่ต่อฮาร์ดแวร์)")
     parser.add_argument("--baud", type=int, default=9600)
