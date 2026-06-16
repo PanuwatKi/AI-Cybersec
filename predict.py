@@ -69,6 +69,34 @@ def classify(text, model, vectorizer):
                 "label": "ปลอดภัย โอกาสเป็นมิจฉาชีพน้อยมาก", "scam_confidence": scam_confidence}
 
 
+def _scam_logodds(text, model, vectorizer):
+    """ค่าความเอนเอียงไปทาง 'มิจฉาชีพ' ในเชิง log-odds (ไวต่อการเปลี่ยนแปลงกว่า %)"""
+    lp = model.predict_log_proba(vectorizer.transform([text]))[0]
+    classes = list(model.classes_)
+    s = classes.index(1) if 1 in classes else 1
+    o = classes.index(0) if 0 in classes else 0
+    return lp[s] - lp[o]
+
+
+def explain_words(text, model, vectorizer, topn=5):
+    """อธิบายว่า 'คำไหน' ทำให้ AI คิดว่าเป็นมิจฉาชีพ
+    วิธี (occlusion): ลองตัดแต่ละคำออก แล้วดูว่าความเอนเอียงไปทางมิจฉาชีพลดลงเท่าไหร่
+    คำที่ตัดออกแล้วลดมาก = คำนั้นเป็นตัวบ่งชี้มิจฉาชีพมาก (อธิบายกรรมการง่าย)"""
+    base = _scam_logodds(text, model, vectorizer)
+    contribs, seen = [], set()
+    for tok in text_tokenize(text):
+        tok = tok.strip()
+        if not tok or tok in seen:
+            continue
+        seen.add(tok)
+        reduced = text.replace(tok, " ")
+        drop = base - _scam_logodds(reduced, model, vectorizer)
+        if drop > 0.1:  # ตัดคำนี้ออกแล้วความเอนเอียงไปทางมิจฉาชีพลดลงจริง
+            contribs.append((tok, drop))
+    contribs.sort(key=lambda x: x[1], reverse=True)
+    return contribs[:topn]
+
+
 def show_and_send(text, model, vectorizer, ser):
     """วิเคราะห์ข้อความ แสดงผลเป็นแถบสี และส่งสีไปบอร์ด (ถ้าต่อไว้)"""
     if not text.strip():
@@ -77,6 +105,13 @@ def show_and_send(text, model, vectorizer, ser):
     color = result["color"]
     bar = f" {result['emoji']}  {result['label']}  ({result['scam_confidence']:.1f}%) "
     print(f"\n{ANSI.get(color, '')}{bar}{ANSI['RESET']}")
+
+    # ถ้าไม่ใช่สีเขียว โชว์คำที่ทำให้ AI สงสัย
+    if color != "GREEN":
+        risky = explain_words(text, model, vectorizer)
+        if risky:
+            words = "  ".join(f"{w}" for w, _ in risky)
+            print(f"   🔍 คำที่ทำให้สงสัย: {words}")
     if ser:
         ser.write(color[0].encode())  # ส่ง 'R' / 'Y' / 'G' ไปขึ้นไฟ Arduino
 
