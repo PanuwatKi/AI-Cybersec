@@ -206,9 +206,20 @@ def load_whisper(model_size):
     return WhisperModel(model_size, device="cpu", compute_type="int8")
 
 
+# คำใบ้ให้ Whisper รู้ว่าจะเจอศัพท์แนวไหน -> ถอดคำสำคัญแม่นขึ้น
+SCAM_PROMPT = ("บทสนทนาทางโทรศัพท์ เกี่ยวกับ ธนาคาร บัญชี โอนเงิน รหัส OTP "
+               "ตำรวจ คดี ฟอกเงิน อายัด พัสดุ ศุลกากร กดลิงก์ ลงทุน กำไร รางวัล ภาษี")
+
+
 def transcribe(whisper_model, audio):
-    """audio = path ไฟล์เสียง หรือ numpy array (float32 16kHz mono)"""
-    segments, _ = whisper_model.transcribe(audio, language="th")
+    """audio = path ไฟล์เสียง หรือ numpy array (float32 16kHz mono)
+    - initial_prompt : ป้อนคำศัพท์แนวมิจฉาชีพล่วงหน้า ช่วยให้ถอดคำสำคัญแม่นขึ้น
+    - vad_filter     : กรองช่วงเงียบ/ที่ไม่ใช่เสียงพูดออกก่อนถอด -> ผลนิ่งขึ้น"""
+    segments, _ = whisper_model.transcribe(
+        audio, language="th",
+        initial_prompt=SCAM_PROMPT,
+        vad_filter=True,
+    )
     return " ".join(seg.text for seg in segments).strip()
 
 
