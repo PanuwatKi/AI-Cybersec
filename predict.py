@@ -34,6 +34,7 @@
 import argparse
 import math
 import os
+import re
 import sys
 import joblib
 from pythainlp.tokenize import word_tokenize
@@ -54,11 +55,20 @@ ANSI = {
 }
 
 
-# ฟังก์ชันตัดคำต้อง "ชื่อเดียวกัน" กับตอนเทรน เพราะ vectorizer.pkl อ้างถึงฟังก์ชันนี้
+# ฟังก์ชันเหล่านี้ต้อง "ชื่อเดียวกัน" กับตอนเทรน เพราะ vectorizer.pkl อ้างถึง
 def text_tokenize(text):
     if not isinstance(text, str):
         return []
     return word_tokenize(text, engine="newmm")
+
+
+_REPEAT_RE = re.compile(r"(.{2,15}?)\1{2,}")
+def normalize_text(text):
+    """ตัดไม้ยมก (ๆ) + ยุบคำซ้ำติดกัน 3 ครั้งขึ้นไป (คุณคุณคุณ -> คุณ) + พิมพ์เล็ก"""
+    if not isinstance(text, str):
+        return ""
+    text = text.lower().replace("ๆ", " ")
+    return _REPEAT_RE.sub(r"\1", text)
 
 
 # เกณฑ์แบ่งสีจาก % โอกาสเป็นมิจฉาชีพ (ปรับได้ตามผลทดสอบจริง)
@@ -163,9 +173,9 @@ class Conversation:
 def analyze_conversation(conv, model, vectorizer, ser):
     """วิเคราะห์ 'บทสนทนาทั้งหมดที่สะสมมา' แล้วแสดงผล + ส่งสีไปบอร์ด"""
     text = conv.transcript
-    tokens = [t for t in text_tokenize(text) if t.strip()]
+    tokens = [t for t in text_tokenize(normalize_text(text)) if t.strip()]
 
-    # ข้อมูลยังน้อยเกินไป (เช่น เพิ่งทักทาย) -> ยังไม่ฟันธง รอฟังต่อ
+    # ข้อมูลยังน้อยเกินไป (เช่น เพิ่งทักทาย/เรียกชื่อซ้ำ ๆ) -> ยังไม่ฟันธง รอฟังต่อ
     if len(tokens) < 3:
         print(f"\n{ANSI['GREEN']} 🟢  ฟังอยู่... (ข้อมูลยังไม่พอจะตัดสิน) {ANSI['RESET']}")
         if ser:

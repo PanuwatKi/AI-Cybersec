@@ -13,6 +13,7 @@ train_model.py — สอน (เทรน) AI ให้รู้จักแย
 =====================================================================================
 """
 import sys
+import re
 import glob
 import pandas as pd
 import joblib
@@ -40,17 +41,30 @@ def text_tokenize(text):
     return word_tokenize(text, engine="newmm")
 
 
+# ปรับข้อความให้เป็นมาตรฐานก่อนวิเคราะห์ (กันคำซ้ำทำให้ค่าเพี้ยน)
+_REPEAT_RE = re.compile(r"(.{2,15}?)\1{2,}")
+def normalize_text(text):
+    """- ตัดไม้ยมก (ๆ) ออก = เหลือคำเดียว เช่น 'คุณๆๆ' -> 'คุณ'
+    - ยุบคำ/พยางค์ที่พิมพ์ซ้ำติดกัน 3 ครั้งขึ้นไป เช่น 'คุณคุณคุณ' -> 'คุณ'
+    - แปลงอังกฤษเป็นพิมพ์เล็ก (OTP/otp ให้เหมือนกัน)"""
+    if not isinstance(text, str):
+        return ""
+    text = text.lower().replace("ๆ", " ")
+    return _REPEAT_RE.sub(r"\1", text)
+
+
 # สร้างตัว "แปลงข้อความเป็นตัวเลข" โดยรวม 2 มุมมองเข้าด้วยกัน:
 #   (1) ระดับคำ (word)  : ดูคำและคู่คำ เช่น "โอน เงิน", "กด ลิงก์"
 #   (2) ระดับตัวอักษร (char): ดูชิ้นส่วนตัวอักษร 2-4 ตัว ทำให้ยังจับได้แม้คำสะกดเพี้ยน
 #       (สำคัญมากเพราะเสียงพูดที่ถอดด้วย Whisper มักสะกดผิดเล็กน้อย เช่น OTP -> โอที่พี่)
+# ทั้งสองตัวผ่าน normalize_text ก่อน (preprocessor) เพื่อกันคำซ้ำ/ไม้ยมก
 def make_vectorizer():
     word_vec = TfidfVectorizer(
-        tokenizer=text_tokenize, lowercase=True,
+        preprocessor=normalize_text, tokenizer=text_tokenize,
         ngram_range=(1, 2), sublinear_tf=True,
     )
     char_vec = TfidfVectorizer(
-        analyzer="char_wb", lowercase=True,
+        preprocessor=normalize_text, analyzer="char_wb",
         ngram_range=(2, 4), sublinear_tf=True,
     )
     return FeatureUnion([("word", word_vec), ("char", char_vec)])

@@ -37,7 +37,8 @@ def text_tokenize(text):
 
 
 # ใช้ตรรกะวิเคราะห์ชุดเดียวกับ predict.py (ไม่เขียนซ้ำ)
-from predict import classify, explain_words, Conversation
+# normalize_text ต้องมีใน namespace นี้ด้วย เพราะ vectorizer.pkl อ้างถึง
+from predict import classify, explain_words, Conversation, normalize_text
 
 BG = {"RED": "#c62828", "YELLOW": "#f9a825", "GREEN": "#2e7d32", "IDLE": "#455a64"}
 FG = {"RED": "#ffffff", "YELLOW": "#212121", "GREEN": "#ffffff", "IDLE": "#ffffff"}
@@ -123,9 +124,9 @@ class ScamDetectorApp:
             return
         self.conv.add(text)
         transcript = self.conv.transcript
-        tokens = [t for t in text_tokenize(transcript) if t.strip()]
+        tokens = [t for t in text_tokenize(normalize_text(transcript)) if t.strip()]
 
-        # ข้อมูลยังน้อยเกินไป (เพิ่งทักทาย) -> รอฟังต่อ
+        # ข้อมูลยังน้อยเกินไป (เพิ่งทักทาย/เรียกชื่อซ้ำ ๆ) -> รอฟังต่อ
         if len(tokens) < 3:
             self._set_result("GREEN", "ฟังอยู่... (ข้อมูลยังไม่พอ)", "", transcript, "(รอฟังต่อ)")
             if self.ser:

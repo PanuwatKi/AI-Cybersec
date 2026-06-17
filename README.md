@@ -43,7 +43,7 @@
 | `predict.py` | ระบบสาธิตบน Terminal (โหมดพิมพ์ / เสียง / ต่อบอร์ด) |
 | `demo_gui.py` | หน้าจอสาธิตเต็มจอ สำหรับนำเสนอ |
 | `arduino_unoq_modulino.ino` | โค้ดฝั่ง Arduino คุมไฟ Modulino Pixels + Buzzer |
-| `Dataset1–7.csv` | ข้อมูลฝึก AI (เพิ่มไฟล์ใหม่ได้ ระบบโหลดอัตโนมัติ) |
+| `Dataset1–8.csv` | ข้อมูลฝึก AI (เพิ่มไฟล์ใหม่ได้ ระบบโหลดอัตโนมัติ) |
 | `requirements.txt` / `requirements-audio.txt` | รายการไลบรารี |
 | `TEAM_GUIDE.md` | คู่มือทีมฉบับเต็ม (การทำงาน, จุดเด่น/ด้อย, แนวตอบกรรมการ) |
 | `PITCH_SCRIPT.md` | สคริปต์นำเสนอ 7 นาที แบ่งบท 3 คน |
