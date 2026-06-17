@@ -46,12 +46,13 @@ FONT = "Tahoma"
 
 
 class ScamDetectorApp:
-    def __init__(self, root, model, vectorizer, ser=None, whisper_size="small"):
+    def __init__(self, root, model, vectorizer, ser=None, whisper_size="small", denoise=False):
         self.root = root
         self.model = model
         self.vectorizer = vectorizer
         self.ser = ser
         self.whisper_size = whisper_size
+        self.denoise = denoise  # ลดเสียงรบกวนก่อนถอดเสียงไหม
         self.whisper = None  # โหลดตอนกดอัดเสียงครั้งแรก
         self.conv = Conversation()  # เก็บบทสนทนาสะสมทั้งสาย
 
@@ -166,11 +167,13 @@ class ScamDetectorApp:
 
     def _record_worker(self):
         try:
-            from predict import record_mic, transcribe, load_whisper
+            from predict import record_mic, transcribe, load_whisper, denoise_audio
             if self.whisper is None:
                 self.root.after(0, lambda: self.status_lbl.configure(text="กำลังโหลดตัวถอดเสียง..."))
                 self.whisper = load_whisper(self.whisper_size)
             audio = record_mic(8)
+            if self.denoise:
+                audio = denoise_audio(audio)
             text = transcribe(self.whisper, audio)
             self.root.after(0, lambda: self.analyze(text))
         except Exception as e:
@@ -185,6 +188,8 @@ def main():
     parser.add_argument("--port", help="พอร์ตบอร์ด Arduino เช่น COM3")
     parser.add_argument("--baud", type=int, default=9600)
     parser.add_argument("--model", default="small", help="ขนาดโมเดลถอดเสียง")
+    parser.add_argument("--denoise", action="store_true",
+                        help="ลดเสียงรบกวนก่อนถอดเสียง (ต้องติดตั้ง noisereduce)")
     args = parser.parse_args()
 
     try:
@@ -200,7 +205,7 @@ def main():
         ser = serial.Serial(args.port, args.baud, timeout=1)
 
     root = tk.Tk()
-    ScamDetectorApp(root, model, vectorizer, ser=ser, whisper_size=args.model)
+    ScamDetectorApp(root, model, vectorizer, ser=ser, whisper_size=args.model, denoise=args.denoise)
     root.mainloop()
     if ser:
         ser.close()

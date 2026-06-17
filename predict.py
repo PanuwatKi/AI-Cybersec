@@ -14,6 +14,7 @@
     python predict.py --listen             # อัดเสียงทีละรอบ สะสมทั้งสาย -> วิเคราะห์
     python predict.py --wav call.wav        # วิเคราะห์จากไฟล์เสียงที่บันทึกไว้ (ทีเดียวจบ)
     python predict.py --single             # วิเคราะห์ทีละประโยค (ปิดการสะสม)
+    python predict.py --listen --denoise   # อัดเสียง + ลดเสียงรบกวนก่อนถอด (ห้องอื้ออึง)
 
 ไลบรารีโหมดเสียง (ติดตั้งเพิ่มเมื่อจะใช้ ดู requirements-audio.txt):
     pip install faster-whisper sounddevice soundfile
@@ -233,6 +234,13 @@ def record_mic(seconds, samplerate=16000, device=None):
     return audio.flatten()
 
 
+def denoise_audio(audio, samplerate=16000):
+    """ลดเสียงรบกวนพื้นหลังด้วย noisereduce (spectral gating) ก่อนส่งเข้า Whisper
+    ช่วยตอนอยู่ในที่มีเสียงอื้ออึง เช่น ห้องแข่ง (ต้องติดตั้ง noisereduce ก่อน)"""
+    import noisereduce as nr
+    return nr.reduce_noise(y=audio, sr=samplerate)
+
+
 def main():
     """ตัวควบคุมหลัก: อ่าน argument -> โหลดโมเดล -> เลือกโหมดทำงาน (ไฟล์เสียง/อัดสด/พิมพ์)"""
     parser = argparse.ArgumentParser()
@@ -246,6 +254,8 @@ def main():
     parser.add_argument("--list-devices", action="store_true", help="แสดงรายชื่อไมโครโฟนทั้งหมดแล้วออก")
     parser.add_argument("--single", action="store_true",
                         help="วิเคราะห์ทีละประโยค (ปิดโหมดสะสมบทสนทนา)")
+    parser.add_argument("--denoise", action="store_true",
+                        help="ลดเสียงรบกวนก่อนถอดเสียง (ต้องติดตั้ง noisereduce)")
     args = parser.parse_args()
 
     # โหมดดูรายชื่อไมค์: ใช้เลือกไมค์ก่อนเดโม เช่น ไมค์เว็บแคม vs ไมค์โน้ตบุ๊ก
@@ -295,6 +305,8 @@ def main():
                 if cmd.lower() in reset_words:
                     conv.reset(); print("📞 เริ่มสายใหม่"); continue
                 audio = record_mic(args.seconds, device=args.device)
+                if args.denoise:
+                    audio = denoise_audio(audio)
                 text = transcribe(wmodel, audio)
                 print(f"📝 ถอดเสียงได้: {text}")
                 if args.single:
