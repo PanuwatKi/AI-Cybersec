@@ -32,6 +32,7 @@
 =====================================================================================
 """
 import argparse
+import math
 import os
 import sys
 import joblib
@@ -87,12 +88,14 @@ def classify(text, model, vectorizer):
 
 
 def _scam_logodds(text, model, vectorizer):
-    """ค่าความเอนเอียงไปทาง 'มิจฉาชีพ' ในเชิง log-odds (ไวต่อการเปลี่ยนแปลงกว่า %)"""
-    lp = model.predict_log_proba(vectorizer.transform([text]))[0]
+    """ค่าความเอนเอียงไปทาง 'มิจฉาชีพ' ในเชิง log-odds (ไวต่อการเปลี่ยนแปลงกว่า %)
+    คำนวณจาก predict_proba เพื่อให้ใช้ได้กับทุกโมเดล รวมถึงโมเดลที่ผ่าน calibration"""
+    p = model.predict_proba(vectorizer.transform([text]))[0]
     classes = list(model.classes_)
     s = classes.index(1) if 1 in classes else 1
     o = classes.index(0) if 0 in classes else 0
-    return lp[s] - lp[o]
+    eps = 1e-9
+    return math.log(p[s] + eps) - math.log(p[o] + eps)
 
 
 def explain_words(text, model, vectorizer, topn=5):

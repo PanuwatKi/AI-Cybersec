@@ -49,6 +49,7 @@
 | `PITCH_SCRIPT.md` | สคริปต์นำเสนอ 7 นาที แบ่งบท 3 คน |
 | `DAY_PLAN.md` | แผนสิ่งที่ต้องทำในวันแข่ง แยกเป็นวัน |
 | `LEAN_CANVAS.md` | Lean / Idea Canvas |
+| `INFRASTRUCTURE_FUND.md` | ร่างแผนขอทุน depa Infrastructure Fund (15 คะแนน) |
 
 ---
 
