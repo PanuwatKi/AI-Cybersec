@@ -138,8 +138,8 @@ while True:
     scam_confidence = proba[list(model.classes_).index(1)] * 100
 
     if scam_confidence >= 70:
-        print(f"🔴 สีแดง: เสี่ยงเป็นมิจฉาชีพสูงมาก! (ความมั่นใจ {scam_confidence:.2f}%)")
+        print(f"🔴 สีแดง: เสี่ยงเป็นมิจฉาชีพสูงมาก! (โอกาสที่คาดว่าจะเป็น {scam_confidence:.2f}%)")
     elif scam_confidence >= 40:
-        print(f"🟡 สีเหลือง: น่าสงสัย มีโอกาสเป็นมิจฉาชีพอยู่บ้าง (ความมั่นใจ {scam_confidence:.2f}%)")
+        print(f"🟡 สีเหลือง: น่าสงสัย มีโอกาสเป็นมิจฉาชีพอยู่บ้าง (โอกาสที่คาดว่าจะเป็น {scam_confidence:.2f}%)")
     else:
-        print(f"🟢 สีเขียว: ปลอดภัย โอกาสเป็นมิจฉาชีพน้อยมาก (ความมั่นใจ {scam_confidence:.2f}%)")
+        print(f"🟢 สีเขียว: ปลอดภัย โอกาสเป็นมิจฉาชีพน้อยมาก (โอกาสที่คาดว่าจะเป็น {scam_confidence:.2f}%)")

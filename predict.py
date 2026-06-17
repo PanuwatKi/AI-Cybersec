@@ -5,11 +5,15 @@
 - รองรับ 2 โหมดป้อนข้อมูล: (1) พิมพ์/วางข้อความ  (2) เสียงพูด -> ถอดเป็นข้อความด้วย Whisper (ออฟไลน์)
 - ถ้าต่อบอร์ด Arduino จะส่งสีไปขึ้นไฟ Modulino Pixels + Buzzer
 
+โดยปกติเป็น "โหมดสนทนา" = สะสมทุกบรรทัดของสายแล้ววิเคราะห์รวมกัน (เหมือนฟังจนจบสาย)
+พิมพ์ 'จบ' เพื่อเริ่มสายใหม่ · ใส่ --single ถ้าอยากวิเคราะห์ทีละประโยคแบบเดิม
+
 วิธีใช้:
-    python predict.py                      # โหมดพิมพ์ข้อความ (เสถียรสุด ใช้เป็นโหมดสำรองเสมอ)
-    python predict.py --port COM3          # โหมดพิมพ์ + ส่งสีไปบอร์ด Arduino
-    python predict.py --listen             # โหมดอัดเสียงจากไมค์ -> ถอดเสียง -> วิเคราะห์
-    python predict.py --wav call.wav        # วิเคราะห์จากไฟล์เสียงที่บันทึกไว้
+    python predict.py                      # โหมดสนทนา (พิมพ์ทีละบรรทัด สะสมทั้งสาย)
+    python predict.py --port COM3          # + ส่งสีไปบอร์ด Arduino
+    python predict.py --listen             # อัดเสียงทีละรอบ สะสมทั้งสาย -> วิเคราะห์
+    python predict.py --wav call.wav        # วิเคราะห์จากไฟล์เสียงที่บันทึกไว้ (ทีเดียวจบ)
+    python predict.py --single             # วิเคราะห์ทีละประโยค (ปิดการสะสม)
 
 ไลบรารีโหมดเสียง (ติดตั้งเพิ่มเมื่อจะใช้ ดู requirements-audio.txt):
     pip install faster-whisper sounddevice soundfile
@@ -21,6 +25,8 @@
   _scam_logodds()      : ตัวช่วยคำนวณความเอนเอียงไปทางมิจฉาชีพ (ใช้ใน explain_words)
   explain_words()      : บอกว่า "คำไหน" ทำให้ AI ตัดสินว่าเป็นมิจฉาชีพ
   show_and_send()      : แสดงผลเป็นแถบสีบนจอ + ส่งสัญญาณสีไปบอร์ด Arduino
+  Conversation         : คลาสเก็บบทสนทนาสะสมทั้งสาย (จำหลายบรรทัด + ค่าสูงสุด)
+  analyze_conversation(): วิเคราะห์บทสนทนาทั้งหมดที่สะสมมา
   load_whisper() / transcribe() / record_mic() : ส่วนโหมดเสียง (เสียง -> ข้อความ)
   main()               : ตัวควบคุมหลัก อ่าน argument แล้วเลือกโหมด (พิมพ์/เสียง/ไฟล์)
 =====================================================================================
@@ -127,6 +133,58 @@ def show_and_send(text, model, vectorizer, ser):
         ser.write(color[0].encode())  # ส่ง 'R' / 'Y' / 'G' ไปขึ้นไฟ Arduino
 
 
+# ---------------- โหมดสนทนา: วิเคราะห์ทั้งสายแบบสะสมหลายบรรทัด ----------------
+class Conversation:
+    """เก็บบทสนทนาสะสมทั้งสาย เพื่อวิเคราะห์รวมกัน (เหมือนฟังสายจริงจนจบ)
+    - .add()   : เพิ่มประโยคใหม่ที่คู่สนทนาพูด
+    - .peak    : ค่าความเสี่ยงสูงสุดที่เคยขึ้นในสายนี้ (เตือนแล้วไม่ลืม)
+    - .reset() : เริ่มสายใหม่ (ล้างความจำ)"""
+    def __init__(self):
+        self.lines = []
+        self.peak = 0.0
+
+    def add(self, utterance):
+        u = utterance.strip()
+        if u:
+            self.lines.append(u)
+
+    def reset(self):
+        self.lines.clear()
+        self.peak = 0.0
+
+    @property
+    def transcript(self):
+        return " ".join(self.lines)
+
+
+def analyze_conversation(conv, model, vectorizer, ser):
+    """วิเคราะห์ 'บทสนทนาทั้งหมดที่สะสมมา' แล้วแสดงผล + ส่งสีไปบอร์ด"""
+    text = conv.transcript
+    tokens = [t for t in text_tokenize(text) if t.strip()]
+
+    # ข้อมูลยังน้อยเกินไป (เช่น เพิ่งทักทาย) -> ยังไม่ฟันธง รอฟังต่อ
+    if len(tokens) < 3:
+        print(f"\n{ANSI['GREEN']} 🟢  ฟังอยู่... (ข้อมูลยังไม่พอจะตัดสิน) {ANSI['RESET']}")
+        if ser:
+            ser.write(b"G")
+        return
+
+    result = classify(text, model, vectorizer)
+    conf = result["scam_confidence"]
+    conv.peak = max(conv.peak, conf)  # จำค่าสูงสุด: ถ้าเคยเสี่ยงสูงแล้ว ให้คงการเตือนไว้
+    color = result["color"]
+    bar = (f" {result['emoji']}  {result['label']}  "
+           f"(ล่าสุด {conf:.1f}% / สูงสุดในสายนี้ {conv.peak:.1f}%) ")
+    print(f"\n{ANSI.get(color, '')}{bar}{ANSI['RESET']}")
+
+    if color != "GREEN":
+        risky = explain_words(text, model, vectorizer)
+        if risky:
+            print(f"   🔍 คำที่ทำให้สงสัย: {'  '.join(w for w, _ in risky)}")
+    if ser:
+        ser.write(color[0].encode())
+
+
 # ---------------- โหมดเสียง (โหลดเฉพาะตอนใช้ เพื่อให้โหมดพิมพ์เบาและเสถียร) ----------------
 def load_whisper(model_size):
     """โหลดโมเดลถอดเสียง Whisper (เรียกครั้งเดียวพอ เพราะโหลดช้า)"""
@@ -162,6 +220,8 @@ def main():
     parser.add_argument("--model", default="small", help="ขนาดโมเดล Whisper: tiny/base/small/medium")
     parser.add_argument("--device", type=int, help="หมายเลขไมโครโฟน (ดูได้จาก --list-devices)")
     parser.add_argument("--list-devices", action="store_true", help="แสดงรายชื่อไมโครโฟนทั้งหมดแล้วออก")
+    parser.add_argument("--single", action="store_true",
+                        help="วิเคราะห์ทีละประโยค (ปิดโหมดสะสมบทสนทนา)")
     args = parser.parse_args()
 
     # โหมดดูรายชื่อไมค์: ใช้เลือกไมค์ก่อนเดโม เช่น ไมค์เว็บแคม vs ไมค์โน้ตบุ๊ก
@@ -189,35 +249,57 @@ def main():
         ser = serial.Serial(args.port, args.baud, timeout=1)
         print(f"🔌 ต่อบอร์ดที่ {args.port} เรียบร้อย")
 
+    reset_words = {"จบ", "จบสาย", "สายใหม่", "ล้าง", "reset", "end"}
     try:
-        # --- โหมดไฟล์เสียง ---
+        # --- โหมดไฟล์เสียง (วิเคราะห์ทีเดียวจบ) ---
         if args.wav:
             wmodel = load_whisper(args.model)
             text = transcribe(wmodel, args.wav)
             print(f"📝 ถอดเสียงได้: {text}")
             show_and_send(text, model, vectorizer, ser)
 
-        # --- โหมดอัดเสียงสด ---
+        # --- โหมดอัดเสียงสด (สะสมทั้งสาย) ---
         elif args.listen:
             wmodel = load_whisper(args.model)
-            print("\n🔮 === โหมดเสียง: กด Enter เพื่ออัดเสียง 1 รอบ (พิมพ์ 'exit' เพื่อออก) ===")
+            conv = Conversation()
+            print("\n🔮 === โหมดเสียง (สะสมทั้งสาย) — กด Enter เพื่ออัด 1 รอบ ===")
+            print("   พิมพ์ 'จบ' = เริ่มสายใหม่ | 'exit' = ออก")
             while True:
-                cmd = input("\nกด Enter เพื่อเริ่มอัด (หรือพิมพ์ exit) : ").strip()
+                cmd = input("\nกด Enter เพื่อเริ่มอัด (หรือพิมพ์ จบ/exit) : ").strip()
                 if cmd.lower() == "exit":
                     break
+                if cmd.lower() in reset_words:
+                    conv.reset(); print("📞 เริ่มสายใหม่"); continue
                 audio = record_mic(args.seconds, device=args.device)
                 text = transcribe(wmodel, audio)
                 print(f"📝 ถอดเสียงได้: {text}")
-                show_and_send(text, model, vectorizer, ser)
+                if args.single:
+                    show_and_send(text, model, vectorizer, ser)
+                else:
+                    conv.add(text)
+                    analyze_conversation(conv, model, vectorizer, ser)
 
-        # --- โหมดพิมพ์ข้อความ (ค่าเริ่มต้น / โหมดสำรองเสมอ) ---
+        # --- โหมดพิมพ์ข้อความ (ค่าเริ่มต้น = สะสมบทสนทนา) ---
         else:
-            print("\n🔮 === ระบบคัดกรองสายมิจฉาชีพ 3 สี (พิมพ์ 'exit' เพื่อออก) ===")
+            conv = Conversation()
+            if args.single:
+                print("\n🔮 === คัดกรองทีละประโยค (พิมพ์ 'exit' เพื่อออก) ===")
+            else:
+                print("\n🔮 === โหมดสนทนา: พิมพ์ทีละบรรทัดเหมือนฟังสายจริง ===")
+                print("   พิมพ์ 'จบ' = เริ่มสายใหม่ | 'exit' = ออก")
             while True:
-                user_input = input("\nวางบทสนทนา/ข้อความที่ต้องการตรวจ : ").strip()
+                user_input = input("\nคู่สนทนาพูดว่า : ").strip()
                 if user_input.lower() == "exit":
                     break
-                show_and_send(user_input, model, vectorizer, ser)
+                if not user_input:
+                    continue
+                if not args.single and user_input.lower() in reset_words:
+                    conv.reset(); print("📞 เริ่มสายใหม่"); continue
+                if args.single:
+                    show_and_send(user_input, model, vectorizer, ser)
+                else:
+                    conv.add(user_input)
+                    analyze_conversation(conv, model, vectorizer, ser)
     finally:
         if ser:
             ser.close()

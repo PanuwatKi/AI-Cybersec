@@ -37,7 +37,7 @@ def text_tokenize(text):
 
 
 # ใช้ตรรกะวิเคราะห์ชุดเดียวกับ predict.py (ไม่เขียนซ้ำ)
-from predict import classify, explain_words
+from predict import classify, explain_words, Conversation
 
 BG = {"RED": "#c62828", "YELLOW": "#f9a825", "GREEN": "#2e7d32", "IDLE": "#455a64"}
 FG = {"RED": "#ffffff", "YELLOW": "#212121", "GREEN": "#ffffff", "IDLE": "#ffffff"}
@@ -52,6 +52,7 @@ class ScamDetectorApp:
         self.ser = ser
         self.whisper_size = whisper_size
         self.whisper = None  # โหลดตอนกดอัดเสียงครั้งแรก
+        self.conv = Conversation()  # เก็บบทสนทนาสะสมทั้งสาย
 
         root.title("🛡️ SAFE — Scam Alert For Everyone | ระบบคัดกรองสายมิจฉาชีพ")
         root.geometry("960x680")
@@ -72,8 +73,8 @@ class ScamDetectorApp:
                                 bg=BG["IDLE"], fg=FG["IDLE"])
         self.pct_lbl.pack(pady=(4, 0))
 
-        # --- ข้อความที่วิเคราะห์ ---
-        tk.Label(root, text="ข้อความที่วิเคราะห์:", font=(FONT, 13, "bold"),
+        # --- บทสนทนาทั้งสาย (สะสม) ---
+        tk.Label(root, text="บทสนทนาทั้งสาย (สะสม):", font=(FONT, 13, "bold"),
                  bg="#263238", fg="#b0bec5").pack(anchor="w", padx=24, pady=(18, 2))
         self.text_lbl = tk.Label(root, text="—", font=(FONT, 15), wraplength=900,
                                  justify="left", bg="#263238", fg="#eceff1")
@@ -97,6 +98,8 @@ class ScamDetectorApp:
         self.rec_btn = tk.Button(bottom, text="🎤 อัดเสียง", font=(FONT, 13, "bold"),
                                  bg="#6a1b9a", fg="white", command=self.record_async)
         self.rec_btn.pack(side="left", padx=(8, 0))
+        tk.Button(bottom, text="📞 เริ่มสายใหม่", font=(FONT, 13, "bold"), bg="#455a64",
+                  fg="white", command=self.reset_call).pack(side="left", padx=(8, 0))
 
         root.bind("<F11>", lambda e: root.attributes("-fullscreen", True))
         root.bind("<Escape>", lambda e: root.attributes("-fullscreen", False))
@@ -114,19 +117,41 @@ class ScamDetectorApp:
         self.words_lbl.configure(text=words or "—")
 
     def analyze(self, text):
-        if not text.strip():
+        """เพิ่มประโยคใหม่เข้าบทสนทนา แล้ววิเคราะห์ 'ทั้งสาย' ที่สะสมมา"""
+        text = text.strip()
+        if not text:
             return
-        result = classify(text, self.model, self.vectorizer)
+        self.conv.add(text)
+        transcript = self.conv.transcript
+        tokens = [t for t in text_tokenize(transcript) if t.strip()]
+
+        # ข้อมูลยังน้อยเกินไป (เพิ่งทักทาย) -> รอฟังต่อ
+        if len(tokens) < 3:
+            self._set_result("GREEN", "ฟังอยู่... (ข้อมูลยังไม่พอ)", "", transcript, "(รอฟังต่อ)")
+            if self.ser:
+                self.ser.write(b"G")
+            return
+
+        result = classify(transcript, self.model, self.vectorizer)
+        conf = result["scam_confidence"]
+        self.conv.peak = max(self.conv.peak, conf)
         color = result["color"]
-        pct = f"ความมั่นใจว่าเป็นมิจฉาชีพ {result['scam_confidence']:.1f}%"
+        pct = f"ล่าสุด {conf:.1f}%   ·   สูงสุดในสายนี้ {self.conv.peak:.1f}%"
         if color == "GREEN":
             words = "(ไม่พบคำที่น่าสงสัย)"
         else:
-            risky = explain_words(text, self.model, self.vectorizer)
+            risky = explain_words(transcript, self.model, self.vectorizer)
             words = "   ".join(w for w, _ in risky) if risky else "—"
-        self._set_result(color, result["label"], pct, text, words)
+        self._set_result(color, result["label"], pct, transcript, words)
         if self.ser:
             self.ser.write(color[0].encode())  # 'R'/'Y'/'G'
+
+    def reset_call(self):
+        """เริ่มสายใหม่ — ล้างบทสนทนาที่สะสมไว้"""
+        self.conv.reset()
+        self._set_result("IDLE", "เริ่มสายใหม่ — พร้อมตรวจสอบ", "", "—", "—")
+        if self.ser:
+            self.ser.write(b"G")
 
     def analyze_text(self):
         text = self.entry.get().strip()
