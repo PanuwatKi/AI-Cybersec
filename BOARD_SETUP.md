@@ -1,106 +1,137 @@
-# 🔧 วิธีย้าย SAFE ขึ้นบอร์ด UNO Q ผ่าน Arduino App Lab
+# 🔧 คู่มือทำหน้างาน: ติดตั้ง SAFE บนบอร์ด UNO Q ตั้งแต่ศูนย์
 
-> เป้าหมาย: พูดใส่ไมค์ → บอร์ดถอดเสียง → ตรวจมิจฉาชีพ → ไฟ Modulino 3 สี + Buzzer + บอก %
-> ⚠️ ชื่อเมนู/ไฟล์ของ App Lab อาจต่างเล็กน้อยตามเวอร์ชัน — ของจริงยึดตามที่พี่เลี้ยงสอน Day 1
-
----
-
-## 🧩 App Lab แบ่งงานเป็น 2 ส่วน
-| ส่วน | รันที่ไหน | หน้าที่ในงานเรา |
-|------|----------|-----------------|
-| **Python (ฝั่ง Linux)** | ชิป Qualcomm | สมองหลัก: ถอดเสียง + AI + ตัดสินสี/% |
-| **Sketch (ฝั่ง MCU)** | STM32 | (ทางเลือก) คุมไฟ Modulino ถ้าสั่งจาก Python ตรงไม่ได้ |
-| **Bridge** | เชื่อม 2 ส่วน | ส่งค่าระหว่าง Python ↔ Sketch |
+> ทำตามทีละข้อจากบนลงล่าง · แต่ละข้อบอก **คำสั่ง** + **จะได้อะไร**
+> 🛟 ถ้าบอร์ดติดขัด ใช้ `demo_gui.py` บนโน้ตบุ๊กสาธิตได้เสมอ (ชัวร์ 100%)
 
 ---
 
-## 📍 โค้ดของเราวางตรงไหน (อิงโครงสร้างจริง App Lab 0.8)
-App Lab แบ่งโฟลเดอร์: **`python/`** (รันบน Linux) · **`sketch/`** (รันบน MCU) · `app.yaml` (ตั้งค่า)
-
-| ไฟล์ของเรา | เอาไปวางที่ | หมายเหตุ |
-|------------|-------------|----------|
-| เนื้อโค้ด `app_unoq.py` | **`python/main.py`** | สมองหลัก (วางทั้งหมด รวม text_tokenize/normalize_text) |
-| `scam_model.pkl`, `vectorizer.pkl` | **`python/`** | ใส่โฟลเดอร์เดียวกับ main.py (โหลดด้วยชื่อไฟล์ได้เลย) |
-| ไลบรารี Python | **ลงผ่าน Terminal บอร์ด** หรือ `app.yaml` | ดูหัวข้อ "ลงไลบรารี" |
-| `arduino_unoq_modulino.ino` | **`sketch/sketch.ino`** (เฉพาะ Option 2) | ถ้าให้ MCU คุมไฟ |
-
-### ลงไลบรารี Python บนบอร์ด
-- **วิธีชัวร์:** คลิกไอคอน **`>_` (Terminal) ล่างซ้าย** → ได้ shell บนบอร์ด → พิมพ์
-  `pip install scikit-learn joblib pythainlp faster-whisper sounddevice`
-- **วิธีทางการ:** ประกาศใน `app.yaml` (ถ้ารองรับ — ดูฟิลด์ dependencies ในไฟล์)
+## ✅ ของที่ต้องมี (เช็กก่อนเริ่ม)
+- [ ] บอร์ด **UNO Q** + สาย USB-C + ไฟเลี้ยง (ที่ชาร์จ GaN / power bank)
+- [ ] **Modulino: Pixels + Buzzer + Buttons** + สาย Qwiic
+- [ ] **ไมโครโฟน USB** (+ USB Hub)
+- [ ] โน้ตบุ๊กที่ลง **Arduino App Lab**
+- [ ] **อินเทอร์เน็ต** (สำหรับ pip install / git clone) ← สำคัญมาก ถ้าไม่มีจะลงไลบรารีไม่ได้
+- [ ] **รหัสผ่าน/ล็อกอินบอร์ด** (ขอจากพี่เลี้ยงถ้าระบบถาม)
 
 ---
 
-## 🔀 เลือกวิธีคุมไฟ Modulino (เลือก 1 แบบ)
-
-### ✅ Option 1 — Python คุม Modulino ตรง ๆ (แนะนำ ง่ายสุด)
-ใช้ **Modulino Python library** สั่งไฟ/เสียงจากฝั่ง Python เลย ไม่ต้องมี Sketch
-- เติมโค้ดในฟังก์ชัน `setup_modulino()` และ `show_result()` ใน `app_unoq.py`
-- ตัวอย่าง (ชื่อจริงดูจากไลบรารีบนบอร์ด):
-  ```python
-  from modulino import ModulinoPixels, ModulinoBuzzer
-  pixels = ModulinoPixels(); buzzer = ModulinoBuzzer()
-  # ...
-  pixels.set_all_color((255,0,0)); pixels.show()
-  buzzer.tone(880, 600)
-  ```
-→ งานเราอยู่ในส่วน Python ส่วนเดียว จบ
-
-### Option 2 — Sketch คุม Modulino (ถ้า Python สั่งตรงไม่ได้)
-- ส่วน Python: ตัดโค้ดคุมไฟออก แล้วส่งตัวอักษรสี (`R`/`Y`/`G`) ผ่าน **Bridge**
-- ส่วน Sketch: ใช้ `arduino_unoq_modulino.ino` แต่เปลี่ยนจากอ่าน `Serial` เป็นอ่านจาก **Bridge**
+## 🟦 PHASE 0 — เชื่อมต่อ
+1. ต่อบอร์ดกับโน้ตบุ๊กด้วย USB-C → เปิด App Lab → มุมล่างซ้ายต้องเห็นชื่อบอร์ด `uno-q-...`
+2. คลิกไอคอน **`>_` (Terminal)** ล่างซ้าย → จะได้หน้าต่างพิมพ์คำสั่งบน **Linux ของบอร์ด**
+   → *จะได้:* ช่องพิมพ์คำสั่งเข้าบอร์ดได้
 
 ---
 
-## 📥 เอาไฟล์ + ไลบรารีขึ้นบอร์ดยังไง (อ่านก่อน!)
-- `train_model.py` ต้องมีไฟล์ `Dataset*.csv` ถึงจะเทรนได้ → **ต้องเอา CSV ขึ้นบอร์ดด้วย**
-- วิธีง่ายสุด: บนบอร์ด `git clone https://github.com/PanuwatKi/AI-Cybersec` (ได้ CSV+โค้ดครบ)
-  หรือก๊อปทั้งโฟลเดอร์ผ่าน **USB**
-- ⚠️ ไฟล์ `.pkl` ไม่ได้อยู่บน GitHub (gitignore) → บนบอร์ดให้ **เทรนใหม่** (มี CSV แล้วเทรนได้)
-  หรือก๊อป `.pkl` จากโน้ตบุ๊กผ่าน USB
-- ⚠️ `pip install` ไลบรารี (sklearn/pythainlp/whisper) **ต้องมีอินเทอร์เน็ต** → เช็กว่าบอร์ดต่อ WiFi
-  ที่งานได้ไหม / ถ้าได้บอร์ดมาซ้อมก่อนวันงาน ให้ลงให้เสร็จก่อน
+## 🟩 PHASE 1 — เอาไฟล์ขึ้นบอร์ด + เทรนโมเดล (ทำใน Terminal)
+> วิธีนี้ดีสุด เพราะ **เทรนบนบอร์ดเอง** = ไม่มีปัญหาเวอร์ชัน .pkl
 
-## 🪜 ขั้นตอนทำจริง (Day 2)
-1. เปิด App Lab → **สร้าง App ใหม่** สำหรับ UNO Q
-2. **เริ่มจาก example ของ Modulino** (เช่นตัวอย่างไฟ Pixels) เป็นโครง → จะได้ API ไฟที่ถูกต้องแน่ ๆ
-3. เอาโค้ดใน`app_unoq.py` ไปวางในส่วน Python ของ App (รวม `text_tokenize`/`normalize_text`)
-4. วาง `scam_model.pkl` + `vectorizer.pkl` ไว้ในโฟลเดอร์ App (หรือรัน `train_model.py` บนบอร์ด)
-5. ใส่ไลบรารีจาก `requirements-board.txt` → ติดตั้งบนบอร์ด
-6. ต่อ Modulino Pixels + Buzzer เข้าช่อง Qwiic
-7. **Run** → พูดใส่ไมค์ → ดูไฟขึ้นสี + % + เสียงเตือน
+3. โหลดโปรเจกต์ลงบอร์ด:
+   ```
+   git clone https://github.com/PanuwatKi/AI-Cybersec
+   cd AI-Cybersec
+   ```
+   → *จะได้:* โค้ด + ไฟล์ `Dataset1–8.csv` ครบ (แต่ยังไม่มี .pkl)
+
+4. ลงไลบรารี:
+   ```
+   python3 -m pip install pandas scikit-learn joblib pythainlp
+   ```
+   - ถ้าขึ้น `pip: command not found` ใช้ `python3 -m pip ...` (ตามด้านบน)
+   - ถ้าไม่มี pip เลย: `sudo apt update && sudo apt install -y python3-pip`
+   - ถ้าขึ้น `externally-managed-environment`: เติม `--break-system-packages` ท้ายคำสั่ง
+   → *จะได้:* ไลบรารีพร้อมใช้บนบอร์ด
+
+5. เทรนโมเดลบนบอร์ด:
+   ```
+   python3 train_model.py
+   ```
+   (พอขึ้นช่องให้พิมพ์ทดสอบ ให้พิมพ์ `exit`)
+   → *จะได้:* ไฟล์ `scam_model.pkl` + `vectorizer.pkl` ที่ตรงเวอร์ชันบอร์ด + เห็นความแม่นยำ ~96%
 
 ---
 
-## 🔌 การต่อสาย (ของเราต่อง่าย ไม่ต้องมี breadboard/บัดกรี)
-| ต่ออะไร | วิธี |
-|---------|------|
-| ไฟเลี้ยงบอร์ด | USB-C จากที่ชาร์จ GaN หรือ **power bank** (ถ้าอยากพกพา) |
-| Modulino Pixels + Buzzer + **Buttons** | สาย **Qwiic** เสียบต่อพ่วงกัน (เสียบทางเดียว ไม่ต้องบัดกรี) |
-| ไมโครโฟน | USB เข้าบอร์ด (ผ่าน USB Hub ที่แจก) |
+## 🟨 PHASE 2 — ทดสอบ "สมอง AI" (ยังไม่ต้องต่อ Modulino/ไมค์)
+6. ทดสอบวิเคราะห์ข้อความบนบอร์ด:
+   ```
+   python3 board_check.py
+   ```
+   พิมพ์ประโยคไทย เช่น *"ผมโทรจากตำรวจ บัญชีคุณพัวพันคดีฟอกเงิน โอนเงินมาด่วน"*
+   → *จะได้:* ผลเป็น 🔴/🟡/🟢 + % → **ยืนยันว่า AI ทำงานบนบอร์ดได้จริง** (พิมพ์ exit ออก)
 
-> ต้องครบ (ไฟ + Modulino + ไมค์) ระบบถึงทำงานครบ — ไม่ใช่แค่มีไฟอย่างเดียว
-> Modulino Buttons เป็นของแจกฟรี (ไม่เสีย Token)
+> ✅ ถ้าถึงตรงนี้ได้ = ส่วนที่เสี่ยงสุดผ่านหมดแล้ว ที่เหลือคือต่อฮาร์ดแวร์
 
-## 🎛️ ควบคุมด้วยปุ่ม (Modulino Buttons)
-| ปุ่ม | หน้าที่ |
+---
+
+## 🟧 PHASE 3 — สร้าง App ใน App Lab + วางไฟล์
+7. ใน App Lab → **สร้าง App ใหม่** สำหรับ UNO Q (โครงสร้างจะมี `python/`, `sketch/`, `app.yaml`)
+8. คัดลอกไฟล์เข้าโฟลเดอร์ `python/` ของ App (ทำใน Terminal — แก้ `<APP_PATH>` เป็นพาธ App จริง):
+   ```
+   cp ~/AI-Cybersec/app_unoq.py        <APP_PATH>/python/main.py
+   cp ~/AI-Cybersec/scam_model.pkl     <APP_PATH>/python/
+   cp ~/AI-Cybersec/vectorizer.pkl     <APP_PATH>/python/
+   ```
+   → *จะได้:* โครงสร้างไฟล์พร้อมรัน:
+   ```
+   python/
+     ├─ main.py            (สมองหลัก = app_unoq.py)
+     ├─ scam_model.pkl
+     └─ vectorizer.pkl
+   sketch/sketch.ino       (ใช้เฉพาะถ้าให้ MCU คุมไฟ)
+   app.yaml
+   ```
+9. (ถ้าจะใช้เสียง) ลงไลบรารีเสียงเพิ่ม:
+   ```
+   python3 -m pip install faster-whisper sounddevice
+   ```
+
+---
+
+## 🟥 PHASE 4 — ต่อฮาร์ดแวร์ + เติม API Modulino
+10. ต่อสาย (ไม่ต้องบัดกรี):
+    - Modulino **Pixels + Buzzer + Buttons** → เสียบ **Qwiic** พ่วงกัน
+    - ไมโครโฟน → **USB** (ผ่าน USB Hub)
+11. หา API จริงของ Modulino:
+    ```
+    python3 -c "import modulino; print(dir(modulino))"
+    ```
+    → ส่งผลลัพธ์มาให้ Claude → จะได้โค้ดเติมใน 4 ฟังก์ชันของ `main.py`:
+    `setup_modulino()` · `show_result()` · `read_buttons()` · `signal_listening()`
+
+---
+
+## 🟪 PHASE 5 — รันจริง
+12. กดปุ่ม **Run** ใน App Lab (หรือใน Terminal: `python3 <APP_PATH>/python/main.py`)
+13. **กดปุ่ม A** → ไฟน้ำเงิน+บี๊บ (พูดได้) → พูด → กด A อีกที → ไฟ 🔴/🟡/🟢 + % (แดงมีเสียง)
+    **กดปุ่ม B** = ล้างเริ่มสายใหม่
+14. (ทางเลือก) ตั้ง **auto-start on boot** → เสียบไฟอย่างเดียวก็ทำงาน (ถามวิธีตั้งจากพี่เลี้ยง)
+
+---
+
+## 📂 ไฟล์ที่ใช้ (สรุป)
+| ไฟล์ | หน้าที่ |
 |------|---------|
-| **A** | กดเริ่มอัด → ไฟน้ำเงิน+บี๊บ (พูดได้) → กดอีกทีหยุด → วิเคราะห์ → ไฟ แดง/เหลือง/เขียว + % |
-| **B** | ล้างบทสนทนาทั้งหมด เริ่มสายใหม่ (กลับไฟสถานะว่าง) |
+| `app_unoq.py` → `python/main.py` | สมองหลัก (เสียง→AI→ไฟ/เสียง/% + ปุ่มควบคุม) |
+| `scam_model.pkl`, `vectorizer.pkl` | โมเดล (เทรนบนบอร์ดใน Phase 1) |
+| `board_check.py` | ทดสอบ AI บนบอร์ด (Phase 2) |
+| `train_model.py`, `Dataset1–8.csv` | เทรนโมเดลบนบอร์ด |
 
-> โค้ดอ่านปุ่มที่ฟังก์ชัน `read_buttons()` — ใส่ API จริงของ Modulino Buttons ตรงนั้น (จับ "กด 1 ครั้ง" ไม่ใช่กดค้าง โค้ดจัดการให้แล้ว)
+## ⌨️ คำสั่งสรุป (Cheat Sheet)
+```
+git clone https://github.com/PanuwatKi/AI-Cybersec   # โหลดโปรเจกต์
+python3 -m pip install pandas scikit-learn joblib pythainlp   # ลงไลบรารี
+python3 train_model.py        # เทรน -> ได้ .pkl (พิมพ์ exit เมื่อเสร็จ)
+python3 board_check.py        # ทดสอบ AI บนบอร์ด
+python3 -c "import modulino; print(dir(modulino))"   # หา API Modulino
+```
 
-## ▶️ เริ่มการทำงาน
-- **ต่อโน้ตบุ๊ก:** กด **Run** ใน App Lab
-- **เดี่ยว ๆ (เสียบไฟอย่างเดียว):** ตั้งแอปให้ **auto-start on boot** → เสียบไฟ → รอ Linux บูต ~20-40 วิ → แอปเริ่มเอง (ยืนยันวิธีตั้งกับพี่เลี้ยง)
-- **สัญญาณ "กำลังฟัง":** ตอนกดปุ่ม A เริ่มอัด โค้ดสั่ง **ไฟน้ำเงิน + บี๊บสั้น** (`signal_listening`) ผู้ใช้จะรู้ว่าพูดได้แล้ว
+## ⚠️ ข้อควรระวัง / แผนสำรอง
+| ปัญหา | ทางแก้ |
+|------|--------|
+| บอร์ดไม่มีเน็ต → ลงไลบรารีไม่ได้ | ขอเน็ต/ฮอตสปอตจากพี่เลี้ยง · ไม่งั้นใช้แผนสำรองโน้ตบุ๊ก |
+| Whisper ช้ามากบนบอร์ด | ใช้ `tiny` · หรือถอดเสียงที่โน้ตบุ๊กแทน |
+| สั่ง Modulino จาก Python ไม่ได้ | ให้ MCU คุมผ่าน `sketch/sketch.ino` + Bridge |
+| ทำบนบอร์ดไม่ทัน | **ใช้ `demo_gui.py` บนโน้ตบุ๊ก** — เดโมได้ครบเหมือนกัน |
 
-## 🩹 แก้ปัญหาที่อาจเจอ
-| อาการ | แก้ |
-|------|-----|
-| โหลด `.pkl` ไม่ได้ / เพี้ยน | sklearn บนบอร์ดคนละเวอร์ชัน → **รัน `train_model.py` บนบอร์ด** สร้าง .pkl ใหม่ |
-| `text_tokenize`/`normalize_text` not found | ต้องนิยาม 2 ฟังก์ชันนี้ในไฟล์ Python ที่โหลด .pkl (มีอยู่ใน app_unoq.py แล้ว) |
-| ถอดเสียงช้ามาก | ใช้ Whisper `tiny` (ตั้งไว้แล้ว) หรือย้ายการถอดเสียงไปที่โน้ตบุ๊ก |
-| สั่งไฟ Modulino จาก Python ไม่ได้ | ใช้ Option 2 (ผ่าน Sketch + Bridge) |
-
-> 💡 แผนสำรองชัวร์: ถ้า Day 2 ติดปัญหาบนบอร์ด ใช้ `demo_gui.py` บนโน้ตบุ๊กสาธิตได้ทันที — ไม่มีทางพลาด
+## 🎁 สิ่งที่จะได้รับ (ผลลัพธ์สุดท้าย)
+อุปกรณ์ **SAFE** ที่ทำงานบนบอร์ดเองทั้งหมด (Edge AI ไม่พึ่งคอม/เน็ต):
+**กดปุ่ม → พูด → ไฟ 3 สีเตือน + บอก % + เสียงเตือนเมื่อเสี่ยงสูง**
