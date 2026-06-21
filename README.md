@@ -42,6 +42,7 @@
 | `train_model.py` | เทรนโมเดล + วัดผล + บันทึก `.pkl` |
 | `predict.py` | ระบบสาธิตบน Terminal (โหมดพิมพ์ / เสียง / ต่อบอร์ด) |
 | `demo_gui.py` | หน้าจอสาธิตเต็มจอ สำหรับนำเสนอ |
+| `app_unoq.py` | เวอร์ชันรันบนบอร์ด Arduino UNO Q (Edge AI ผ่าน App Lab) |
 | `arduino_unoq_modulino.ino` | โค้ดฝั่ง Arduino คุมไฟ Modulino Pixels + Buzzer |
 | `Dataset1–8.csv` | ข้อมูลฝึก AI (เพิ่มไฟล์ใหม่ได้ ระบบโหลดอัตโนมัติ) |
 | `requirements.txt` / `requirements-audio.txt` | รายการไลบรารี |
@@ -50,6 +51,7 @@
 | `DAY_PLAN.md` | แผนสิ่งที่ต้องทำในวันแข่ง แยกเป็นวัน |
 | `LEAN_CANVAS.md` | Lean / Idea Canvas |
 | `INFRASTRUCTURE_FUND.md` | ร่างแผนขอทุน depa Infrastructure Fund (15 คะแนน) |
+| `MAKER_SPACE_TOKENS.md` | รายการราคา Token + แผนเบิกของ |
 
 ---
 

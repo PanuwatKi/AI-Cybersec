@@ -1,0 +1,9 @@
+# ไลบรารีสำหรับรันบน Arduino UNO Q (ฝั่ง Linux) ผ่าน App Lab
+# หมายเหตุ: เพื่อเลี่ยงปัญหาโหลด .pkl ข้ามเวอร์ชัน ให้รัน train_model.py บนบอร์ด
+#          เพื่อสร้าง scam_model.pkl/vectorizer.pkl ใหม่ด้วย sklearn เวอร์ชันของบอร์ด
+scikit-learn
+joblib
+pythainlp
+faster-whisper
+sounddevice
+# (ถ้าจะลดเสียงรบกวน) noisereduce
