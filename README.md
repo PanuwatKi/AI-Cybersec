@@ -52,6 +52,7 @@
 | `LEAN_CANVAS.md` | Lean / Idea Canvas |
 | `INFRASTRUCTURE_FUND.md` | ร่างแผนขอทุน depa Infrastructure Fund (15 คะแนน) |
 | `MAKER_SPACE_TOKENS.md` | รายการราคา Token + แผนเบิกของ |
+| `BOARD_SETUP.md` | วิธีย้ายขึ้นบอร์ด UNO Q ผ่าน Arduino App Lab |
 
 ---
 
