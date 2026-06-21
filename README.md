@@ -43,6 +43,7 @@
 | `predict.py` | ระบบสาธิตบน Terminal (โหมดพิมพ์ / เสียง / ต่อบอร์ด) |
 | `demo_gui.py` | หน้าจอสาธิตเต็มจอ สำหรับนำเสนอ |
 | `app_unoq.py` | เวอร์ชันรันบนบอร์ด Arduino UNO Q (Edge AI ผ่าน App Lab) |
+| `board_check.py` | ทดสอบบนบอร์ดด้วยตัวบอร์ดอย่างเดียว (ไม่ต้องมี Modulino/ไมค์) |
 | `arduino_unoq_modulino.ino` | โค้ดฝั่ง Arduino คุมไฟ Modulino Pixels + Buzzer |
 | `Dataset1–8.csv` | ข้อมูลฝึก AI (เพิ่มไฟล์ใหม่ได้ ระบบโหลดอัตโนมัติ) |
 | `requirements.txt` / `requirements-audio.txt` | รายการไลบรารี |
