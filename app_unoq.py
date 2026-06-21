@@ -135,13 +135,17 @@ def _enough(text):
 
 
 def main():
+    import os
     import time
     import numpy as np
     import sounddevice as sd
 
+    # โหลด .pkl โดยอิง "ตำแหน่งไฟล์นี้" เพื่อให้หาไฟล์เจอเสมอ
+    # (ไม่ขึ้นกับว่า App Lab รันจากโฟลเดอร์ไหน)
+    here = os.path.dirname(os.path.abspath(__file__))
     print("⏳ กำลังโหลดโมเดล...")
-    model = joblib.load("scam_model.pkl")
-    vectorizer = joblib.load("vectorizer.pkl")
+    model = joblib.load(os.path.join(here, "scam_model.pkl"))
+    vectorizer = joblib.load(os.path.join(here, "vectorizer.pkl"))
     pixels, buzzer, buttons = setup_modulino()
     whisper = get_whisper("tiny")          # บนบอร์ดเริ่มที่ tiny ก่อน (เบาสุด)
 
