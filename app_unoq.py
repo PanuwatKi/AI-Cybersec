@@ -3,6 +3,7 @@
 app_unoq.py — เวอร์ชันรันบน Arduino UNO Q (ฝั่ง Linux) ผ่าน Arduino App Lab
 ขั้นตอน: พูดใส่ไมโครโฟน -> Whisper ถอดเป็นข้อความ -> AI ตรวจมิจฉาชีพ
         -> ไฟ Modulino 3 สี + เสียงเตือนเมื่อแดง + บอก % ความมั่นใจ
+ควบคุมด้วยปุ่ม Modulino Buttons: ปุ่ม A = เริ่ม/หยุดอัด · ปุ่ม B = ล้างบทสนทนาเริ่มใหม่
 
 *** นี่เป็น TEMPLATE ***
 ส่วนควบคุม Modulino (ไฟ/เสียง) ใน setup_modulino()/show_result() ให้ปรับตาม API
@@ -52,13 +53,28 @@ def classify(text, model, vectorizer):
 #  ส่วนฮาร์ดแวร์ Modulino — *** ปรับตาม API ที่เวิร์กช็อปสอน ***
 # ============================================================
 def setup_modulino():
-    """เริ่มต้นโมดูล Modulino Pixels (ไฟ) + Buzzer (เสียง)"""
+    """เริ่มต้น Modulino Pixels (ไฟ) + Buzzer (เสียง) + Buttons (ปุ่มกด)"""
     # ตัวอย่าง (ชื่อจริงอาจต่างกันตามไลบรารีของ UNO Q):
-    #   from modulino import ModulinoPixels, ModulinoBuzzer
+    #   from modulino import ModulinoPixels, ModulinoBuzzer, ModulinoButtons
     #   pixels = ModulinoPixels()
     #   buzzer = ModulinoBuzzer()
-    #   return pixels, buzzer
-    return None, None
+    #   buttons = ModulinoButtons()
+    #   return pixels, buzzer, buttons
+    return None, None, None
+
+
+def set_idle(pixels):
+    """ไฟสถานะว่าง (รอกดปุ่ม) — เช่น ไฟขาวหรี่ ๆ"""
+    print("⚪ พร้อม — กดปุ่ม A เพื่อเริ่มอัด")
+    # for i in range(8): pixels.set(i, 30, 30, 30)
+    # pixels.show()
+
+
+def read_buttons(buttons):
+    """อ่านปุ่ม คืน (กดA, กดB) — *** ปรับตาม API จริงของ Modulino Buttons ***"""
+    # buttons.update()
+    # return buttons.is_pressed("A"), buttons.is_pressed("B")
+    return False, False
 
 
 def show_result(pixels, buzzer, color, conf):
@@ -113,32 +129,71 @@ def transcribe(whisper, audio):
     return " ".join(s.text for s in segs).strip()
 
 
+def _enough(text):
+    """มีข้อมูลพอจะตัดสินไหม (>= 3 คำหลัง normalize)"""
+    return len([t for t in text_tokenize(normalize_text(text)) if t.strip()]) >= 3
+
+
 def main():
+    import time
+    import numpy as np
+    import sounddevice as sd
+
     print("⏳ กำลังโหลดโมเดล...")
     model = joblib.load("scam_model.pkl")
     vectorizer = joblib.load("vectorizer.pkl")
-    pixels, buzzer = setup_modulino()
+    pixels, buzzer, buttons = setup_modulino()
     whisper = get_whisper("tiny")          # บนบอร์ดเริ่มที่ tiny ก่อน (เบาสุด)
-    print("✅ พร้อมแล้ว — พูดใส่ไมค์ได้เลย (กด Ctrl+C เพื่อออก)")
 
-    transcript = []                         # สะสมทั้งสายเหมือนฟังจนจบ
+    conv = []                 # บทสนทนาสะสมทั้งสาย
+    frames = []               # บัฟเฟอร์เสียงระหว่างอัด
+    recording = False
+    prev_a = prev_b = False   # ไว้จับ "ขอบขาขึ้น" (กด 1 ครั้ง ไม่ใช่กดค้าง)
+
+    def audio_cb(indata, n, t, status):
+        if recording:
+            frames.append(indata.copy())
+
+    stream = sd.InputStream(samplerate=16000, channels=1, dtype="float32", callback=audio_cb)
+    stream.start()
+    set_idle(pixels)
+    print("✅ พร้อม | ปุ่ม A = เริ่ม/หยุดอัด | ปุ่ม B = ล้างเริ่มใหม่ (Ctrl+C ออก)")
+
     while True:
-        signal_listening(pixels, buzzer)    # ไฟน้ำเงิน + บี๊บ บอกว่า "พูดได้แล้ว"
-        audio = record(6)
-        text = transcribe(whisper, audio)
-        if not text:
-            continue
-        print(f"📝 ได้ยิน: {text}")
-        transcript.append(text)
-        full = " ".join(transcript)
+        a, b = read_buttons(buttons)
 
-        # ข้อมูลยังน้อย -> รอฟังต่อ
-        if len([t for t in text_tokenize(normalize_text(full)) if t.strip()]) < 3:
-            print("🟢 ฟังอยู่... (ข้อมูลยังไม่พอ)")
-            continue
+        # ----- ปุ่ม A: เริ่ม/หยุดอัด (กดสลับ) -----
+        if a and not prev_a:
+            if not recording:
+                frames.clear()
+                recording = True
+                signal_listening(pixels, buzzer)         # ไฟน้ำเงิน+บี๊บ = กำลังอัด
+            else:
+                recording = False                        # กดอีกที = หยุด แล้ววิเคราะห์
+                if frames:
+                    audio = np.concatenate(frames).flatten()
+                    text = transcribe(whisper, audio)
+                    if text:
+                        print(f"📝 ได้ยิน: {text}")
+                        conv.append(text)
+                        full = " ".join(conv)
+                        if _enough(full):
+                            color, conf = classify(full, model, vectorizer)
+                            show_result(pixels, buzzer, color, conf)
+                        else:
+                            print("🟢 ฟังอยู่... (ข้อมูลยังไม่พอ)")
+                            set_idle(pixels)
 
-        color, conf = classify(full, model, vectorizer)
-        show_result(pixels, buzzer, color, conf)
+        # ----- ปุ่ม B: ล้างบทสนทนา เริ่มสายใหม่ -----
+        if b and not prev_b:
+            conv.clear()
+            frames.clear()
+            recording = False
+            set_idle(pixels)
+            print("📞 ล้างบทสนทนา เริ่มสายใหม่")
+
+        prev_a, prev_b = a, b
+        time.sleep(0.05)        # กันลูปวนเร็วเกินไป
 
 
 if __name__ == "__main__":
