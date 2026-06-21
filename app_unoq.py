@@ -76,6 +76,17 @@ def show_result(pixels, buzzer, color, conf):
     # ถ้ามี LCD ก็แสดง % ได้:  lcd.print(f"{color} {conf:.0f}%")
 
 
+def signal_listening(pixels, buzzer):
+    """บอกผู้ใช้ว่า 'เริ่มอัดเสียงแล้ว พูดได้เลย' — ไฟน้ำเงิน + เสียงบี๊บสั้น
+    สำคัญตอนรันบนบอร์ดแบบไม่มีจอ ผู้ใช้จะได้รู้ว่าพูดตอนไหน"""
+    print("🔵 เริ่มฟัง — พูดได้เลย")
+    # --- ปรับตาม API จริงของ Modulino ---
+    # for i in range(8):
+    #     pixels.set(i, 0, 0, 255)     # ไฟน้ำเงิน = กำลังฟัง
+    # pixels.show()
+    # buzzer.tone(1200, 120)           # บี๊บสั้น ๆ บอกว่าเริ่มอัด
+
+
 # ============================================================
 #  ส่วนเสียง (Whisper) — รันบนบอร์ดใช้รุ่นเล็ก (tiny/base) เพราะ CPU จำกัด
 # ============================================================
@@ -112,6 +123,7 @@ def main():
 
     transcript = []                         # สะสมทั้งสายเหมือนฟังจนจบ
     while True:
+        signal_listening(pixels, buzzer)    # ไฟน้ำเงิน + บี๊บ บอกว่า "พูดได้แล้ว"
         audio = record(6)
         text = transcribe(whisper, audio)
         if not text:
