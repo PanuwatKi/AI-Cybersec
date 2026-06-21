@@ -14,13 +14,20 @@
 
 ---
 
-## 📍 โค้ดของเราวางตรงไหน (ตารางสรุป)
-| ไฟล์ของเรา | เอาไปวางใน App Lab | หมายเหตุ |
-|------------|---------------------|----------|
-| `app_unoq.py` | **ส่วน Python ของ App** | สมองหลัก (คัดลอกทั้งไฟล์) |
-| `scam_model.pkl`, `vectorizer.pkl` | โฟลเดอร์เดียวกับ Python | หรือรัน `train_model.py` บนบอร์ดเพื่อสร้างใหม่ |
-| `requirements-board.txt` | ไฟล์ requirements ของ App | ให้บอร์ดติดตั้งไลบรารี |
-| `arduino_unoq_modulino.ino` | **ส่วน Sketch** (เฉพาะ Option 2) | ถ้าให้ MCU คุมไฟ |
+## 📍 โค้ดของเราวางตรงไหน (อิงโครงสร้างจริง App Lab 0.8)
+App Lab แบ่งโฟลเดอร์: **`python/`** (รันบน Linux) · **`sketch/`** (รันบน MCU) · `app.yaml` (ตั้งค่า)
+
+| ไฟล์ของเรา | เอาไปวางที่ | หมายเหตุ |
+|------------|-------------|----------|
+| เนื้อโค้ด `app_unoq.py` | **`python/main.py`** | สมองหลัก (วางทั้งหมด รวม text_tokenize/normalize_text) |
+| `scam_model.pkl`, `vectorizer.pkl` | **`python/`** | ใส่โฟลเดอร์เดียวกับ main.py (โหลดด้วยชื่อไฟล์ได้เลย) |
+| ไลบรารี Python | **ลงผ่าน Terminal บอร์ด** หรือ `app.yaml` | ดูหัวข้อ "ลงไลบรารี" |
+| `arduino_unoq_modulino.ino` | **`sketch/sketch.ino`** (เฉพาะ Option 2) | ถ้าให้ MCU คุมไฟ |
+
+### ลงไลบรารี Python บนบอร์ด
+- **วิธีชัวร์:** คลิกไอคอน **`>_` (Terminal) ล่างซ้าย** → ได้ shell บนบอร์ด → พิมพ์
+  `pip install scikit-learn joblib pythainlp faster-whisper sounddevice`
+- **วิธีทางการ:** ประกาศใน `app.yaml` (ถ้ารองรับ — ดูฟิลด์ dependencies ในไฟล์)
 
 ---
 
