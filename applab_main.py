@@ -61,17 +61,27 @@ def classify(text):
 # ---------- ลองตั้งค่าไมค์ (ถ้ามี -> โหมดฟังสด) ----------
 SCAM_PROMPT = ("บทสนทนาทางโทรศัพท์ ธนาคาร บัญชี โอนเงิน รหัส OTP ตำรวจ คดี "
                "ฟอกเงิน พัสดุ ลิงก์ ลงทุน กำไร รางวัล")
-LIVE = False
-whisper = None
+# ขั้น 1: เช็กไมค์ (เพิ่ม "sounddevice" ใน requirements.txt ก่อน)
+MIC_OK = False
+sd = None
 try:
     import sounddevice as sd
-    from faster_whisper import WhisperModel
     print("MICS:", sd.query_devices())
-    whisper = WhisperModel("tiny", device="cpu", compute_type="int8")
-    LIVE = True
-    print("=== LIVE MIC MODE: พูดใส่ไมค์ได้เลย (อัดรอบละ 6 วิ) ===")
+    MIC_OK = True
 except Exception as e:
-    print("=== DEMO MODE (ยังไม่มีไมค์/ไลบรารีเสียง):", e, "===")
+    print("ยังไม่มี sounddevice:", e)
+
+# ขั้น 2: เช็กตัวถอดเสียง (เพิ่ม "faster-whisper" ทีหลัง เมื่อไมค์ผ่านแล้ว)
+LIVE = False
+whisper = None
+if MIC_OK:
+    try:
+        from faster_whisper import WhisperModel
+        whisper = WhisperModel("tiny", device="cpu", compute_type="int8")
+        LIVE = True
+        print("=== LIVE MIC MODE: พูดใส่ไมค์ได้เลย (อัดรอบละ 6 วิ) ===")
+    except Exception as e:
+        print("ยังไม่มี faster-whisper:", e)
 
 TESTS = [
     "ผมโทรจากตำรวจ บัญชีคุณพัวพันคดีฟอกเงิน โอนเงินมาตรวจสอบด่วน",
