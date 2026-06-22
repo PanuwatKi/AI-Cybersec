@@ -32,13 +32,13 @@
    ```
    → *จะได้:* โค้ด + ไฟล์ `Dataset1–8.csv` ครบ (แต่ยังไม่มี .pkl)
 
-4. ลงไลบรารี:
+4. ลงไลบรารี (บอร์ดเป็น Debian ต้องใส่ `--break-system-packages`):
    ```
-   python3 -m pip install pandas scikit-learn joblib pythainlp
+   python3 -m pip install --break-system-packages pandas scikit-learn joblib pythainlp
    ```
-   - ถ้าขึ้น `pip: command not found` ใช้ `python3 -m pip ...` (ตามด้านบน)
-   - ถ้าไม่มี pip เลย: `sudo apt update && sudo apt install -y python3-pip`
-   - ถ้าขึ้น `externally-managed-environment`: เติม `--break-system-packages` ท้ายคำสั่ง
+   - ทำไมต้องมี flag นี้: Debian กันการลงทับระบบ (PEP 668) — flag นี้สั่งให้ลงได้เลย เหมาะกับ prototype
+   - **อย่าใช้ venv** เพราะปุ่ม Run ของ App Lab ใช้ python ระบบ จะหาไลบรารีใน venv ไม่เจอ
+   - ถ้า `pip: command not found` ใช้ `python3 -m pip ...` · ถ้าไม่มี pip เลย: `sudo apt install -y python3-pip`
    → *จะได้:* ไลบรารีพร้อมใช้บนบอร์ด
 
 5. เทรนโมเดลบนบอร์ด:
@@ -88,7 +88,7 @@
    ```
    **(ถ้าจะใช้เสียงบนบอร์ด)** ลงไลบรารีเสียงเพิ่ม:
    ```
-   python3 -m pip install faster-whisper sounddevice
+   python3 -m pip install --break-system-packages faster-whisper sounddevice
    ```
 
 ---
@@ -125,7 +125,8 @@
 ## ⌨️ คำสั่งสรุป (Cheat Sheet)
 ```
 git clone https://github.com/PanuwatKi/AI-Cybersec   # โหลดโปรเจกต์
-python3 -m pip install pandas scikit-learn joblib pythainlp   # ลงไลบรารี
+python3 -m pip install --break-system-packages pandas scikit-learn joblib pythainlp   # ลงไลบรารี
+# (App อยู่ใน ~/ArduinoApps/<ชื่อ App> เช่น ~/ArduinoApps/SAFE)
 python3 train_model.py        # เทรน -> ได้ .pkl (พิมพ์ exit เมื่อเสร็จ)
 python3 board_check.py        # ทดสอบ AI บนบอร์ด
 python3 -c "import modulino; print(dir(modulino))"   # หา API Modulino
