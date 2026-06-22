@@ -23,7 +23,7 @@ from pythainlp.tokenize import word_tokenize
 USE_BRIDGE = True
 MODE = "mic"
 REC_SECONDS = 6      # ใช้กับโหมด non-bridge (auto) เท่านั้น
-MODEL_SIZE = "tiny"  # "tiny"=เร็ว, "base"=แม่นกว่าแต่ช้ากว่า
+MODEL_SIZE = "small"  # tiny < base < small < medium (แม่นขึ้น/ช้าลง)
 # ============================================
 
 
