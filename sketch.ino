@@ -9,7 +9,7 @@
   *** ถ้า compile ไม่ผ่าน ให้ส่ง log ในแท็บ App launch มา เดี๋ยวปรับชื่อฟังก์ชันให้ตรงไลบรารี ***
 */
 #include <Arduino_RouterBridge.h>
-#include <Arduino_Modulino.h>
+#include <Modulino.h>
 
 ModulinoPixels pixels;
 ModulinoButtons buttons;
