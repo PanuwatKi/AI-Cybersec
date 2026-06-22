@@ -91,8 +91,15 @@ sd = None
 try:
     import sounddevice as sd
     from faster_whisper import WhisperModel
-    whisper = WhisperModel(MODEL_SIZE, device="cpu", compute_type="int8", cpu_threads=4)
-    print("=== AUDIO READY ===")
+    try:
+        # ใช้โมเดลจาก cache โดยไม่แตะเน็ต (เหมาะกับรันเดี่ยวออฟไลน์)
+        whisper = WhisperModel(MODEL_SIZE, device="cpu", compute_type="int8",
+                               cpu_threads=4, local_files_only=True)
+        print("=== AUDIO READY (โมเดลจาก cache, ออฟไลน์) ===")
+    except Exception:
+        # ครั้งแรกที่ยังไม่มี cache -> ดาวน์โหลด (ต้องมีเน็ต)
+        whisper = WhisperModel(MODEL_SIZE, device="cpu", compute_type="int8", cpu_threads=4)
+        print("=== AUDIO READY (ดาวน์โหลดโมเดลครั้งแรก) ===")
 except Exception as e:
     print("เสียงยังไม่พร้อม:", e)
 
