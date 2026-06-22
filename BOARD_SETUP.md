@@ -64,12 +64,19 @@
 
 ## 🟧 PHASE 3 — สร้าง App ใน App Lab + วางไฟล์
 7. ใน App Lab → **สร้าง App ใหม่** สำหรับ UNO Q (โครงสร้างจะมี `python/`, `sketch/`, `app.yaml`)
-8. คัดลอกไฟล์เข้าโฟลเดอร์ `python/` ของ App (ทำใน Terminal — แก้ `<APP_PATH>` เป็นพาธ App จริง):
+8. **หาโฟลเดอร์ App แล้วเด้งเข้าไป** (ไม่ต้องรู้พาธล่วงหน้า):
    ```
-   cp ~/AI-Cybersec/app_unoq.py        <APP_PATH>/python/main.py
-   cp ~/AI-Cybersec/scam_model.pkl     <APP_PATH>/python/
-   cp ~/AI-Cybersec/vectorizer.pkl     <APP_PATH>/python/
+   cd "$(dirname "$(find ~ -name app.yaml 2>/dev/null | head -1)")"
+   ls          # ต้องเห็น  python/  sketch/  app.yaml = ถูกโฟลเดอร์แล้ว
    ```
+   > ถ้าเจอหลาย App ให้เลือกอันที่ชื่อโฟลเดอร์ตรงกับชื่อ App (`test`)
+9. คัดลอกไฟล์เข้า `python/` (พิมพ์สั้น ๆ ได้เพราะอยู่ในโฟลเดอร์ App แล้ว):
+   ```
+   cp ~/AI-Cybersec/app_unoq.py     python/main.py
+   cp ~/AI-Cybersec/scam_model.pkl  python/
+   cp ~/AI-Cybersec/vectorizer.pkl  python/
+   ```
+   > หรือเพิ่มไฟล์ผ่านหน้าต่าง App Lab (GUI) แบบที่เคยลาก .pkl เข้า `python/` ก็ได้ — ไม่ต้องใช้ cp
    → *จะได้:* โครงสร้างไฟล์พร้อมรัน:
    ```
    python/
@@ -79,7 +86,7 @@
    sketch/sketch.ino       (ใช้เฉพาะถ้าให้ MCU คุมไฟ)
    app.yaml
    ```
-9. (ถ้าจะใช้เสียง) ลงไลบรารีเสียงเพิ่ม:
+   **(ถ้าจะใช้เสียงบนบอร์ด)** ลงไลบรารีเสียงเพิ่ม:
    ```
    python3 -m pip install faster-whisper sounddevice
    ```
