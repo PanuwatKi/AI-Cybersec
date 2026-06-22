@@ -96,7 +96,9 @@ try:
 except Exception as e:
     print("เสียงยังไม่พร้อม:", e)
 
-CLIPS = sorted(glob.glob(os.path.join(here, "clips", "*")))
+_AUDIO_EXT = (".wav", ".mp3", ".m4a", ".ogg", ".flac", ".aac")
+CLIPS = sorted(f for f in glob.glob(os.path.join(here, "clips", "*"))
+               if f.lower().endswith(_AUDIO_EXT))
 _clip = 0
 conv = []
 recording = False
