@@ -24,13 +24,7 @@ USE_BRIDGE = True
 MODE = "mic"
 REC_SECONDS = 6      # ใช้กับโหมด non-bridge (auto) เท่านั้น
 MODEL_SIZE = "small"  # tiny < base < small < medium (แม่นขึ้น/ช้าลง)
-OFFLINE = True       # True = บังคับ Whisper ใช้ cache ไม่ต่อเน็ตเลย (สำหรับรันออฟไลน์/พรีเซนต์)
 # ============================================
-
-# บังคับออฟไลน์ ต้องตั้งก่อน import faster_whisper -> กันค้างเพราะรอต่อ HuggingFace
-if OFFLINE:
-    os.environ["HF_HUB_OFFLINE"] = "1"
-    os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
 
 def text_tokenize(text):
@@ -92,20 +86,29 @@ def classify(text):
 
 
 # ---------- เสียง ----------
+# เก็บโมเดลใน python/models (โฟลเดอร์แอป = คงอยู่ข้ามการรีสตาร์ท) -> รันออฟไลน์ได้จริง
+MODEL_DIR = os.path.join(here, "models")
 whisper = None
 sd = None
 try:
     import sounddevice as sd
     from faster_whisper import WhisperModel
     try:
-        # ใช้โมเดลจาก cache โดยไม่แตะเน็ต (เหมาะกับรันเดี่ยวออฟไลน์)
-        whisper = WhisperModel(MODEL_SIZE, device="cpu", compute_type="int8",
-                               cpu_threads=4, local_files_only=True)
-        print("=== AUDIO READY (โมเดลจาก cache, ออฟไลน์) ===")
+        import onnxruntime as _ort
+        _ort.set_default_logger_severity(3)   # ซ่อน warning หา GPU ไม่เจอ
     except Exception:
-        # ครั้งแรกที่ยังไม่มี cache -> ดาวน์โหลด (ต้องมีเน็ต)
-        whisper = WhisperModel(MODEL_SIZE, device="cpu", compute_type="int8", cpu_threads=4)
-        print("=== AUDIO READY (ดาวน์โหลดโมเดลครั้งแรก) ===")
+        pass
+    try:
+        # โหลดจากโฟลเดอร์แอป โดยไม่แตะเน็ต (ออฟไลน์)
+        whisper = WhisperModel(MODEL_SIZE, device="cpu", compute_type="int8", cpu_threads=4,
+                               download_root=MODEL_DIR, local_files_only=True)
+        print("=== AUDIO READY (โมเดลจาก %s — ออฟไลน์) ===" % MODEL_DIR)
+    except Exception:
+        # ยังไม่มีโมเดลในโฟลเดอร์ -> ดาวน์โหลดมาเก็บ (ต้องมีเน็ต "ครั้งเดียว")
+        print(">>> ยังไม่มีโมเดล กำลังดาวน์โหลดเก็บใน %s (ต้องมีเน็ตครั้งเดียว)..." % MODEL_DIR)
+        whisper = WhisperModel(MODEL_SIZE, device="cpu", compute_type="int8", cpu_threads=4,
+                               download_root=MODEL_DIR, local_files_only=False)
+        print("=== AUDIO READY (ดาวน์โหลดเก็บแล้ว ครั้งหน้าออฟไลน์ได้) ===")
 except Exception as e:
     print("เสียงยังไม่พร้อม:", e)
 
@@ -120,6 +123,9 @@ stream = None
 
 
 def transcribe_audio(audio_or_path):
+    if whisper is None:
+        print("⚠️ โมเดลถอดเสียงยังไม่พร้อม (ดูข้อความตอนเริ่มแอป)")
+        return ""
     t0 = time.time()
     print("กำลังถอดเสียง...")
     segs, _ = whisper.transcribe(audio_or_path, language="th", vad_filter=True,
