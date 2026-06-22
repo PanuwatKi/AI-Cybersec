@@ -1,0 +1,17 @@
+# ====== สำคัญ ======
+# App Lab รัน Python ใน Docker container + venv แยก (ไม่ใช่ python ของ terminal)
+# การ pip install ใน terminal "ไม่นับ" -> ต้องประกาศ deps ที่นี่
+#
+# วิธีใช้: ก๊อปไฟล์นี้เป็น  python/requirements.txt  ใน App ของ App Lab แล้วกด Run
+# App Lab จะลงไลบรารีเหล่านี้เข้า venv ของ container ให้เอง
+#
+# แนะนำ: ใส่ 4 ตัวบนก่อน (ตัว AI ลงเร็ว) ให้ผ่านก่อน แล้วค่อยเพิ่ม 2 ตัวล่าง (เสียง ลงนานกว่า)
+
+pythainlp
+scikit-learn
+joblib
+numpy
+
+# --- เพิ่มทีหลังเมื่อจะใช้เสียง ---
+faster-whisper
+sounddevice

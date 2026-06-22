@@ -62,6 +62,11 @@
 
 ---
 
+> ⚠️ **สำคัญมาก:** ตอนกดปุ่ม **Run** App Lab รัน Python ใน **Docker container + venv แยก**
+> (ไม่ใช่ python ของ terminal) → การ `pip install` ใน terminal **ไม่มีผลกับ App**
+> ต้องประกาศไลบรารีในไฟล์ **`python/requirements.txt`** (ดู `requirements-app.txt`) แล้ว App Lab
+> จะลงให้เองตอน Run · ส่วน terminal install ใช้สำหรับทดสอบด้วย `board_check.py`/`board_selftest.py` เท่านั้น
+
 ## 🟧 PHASE 3 — สร้าง App ใน App Lab + วางไฟล์
 7. ใน App Lab → **สร้าง App ใหม่** สำหรับ UNO Q (โครงสร้างจะมี `python/`, `sketch/`, `app.yaml`)
 8. **หาโฟลเดอร์ App แล้วเด้งเข้าไป** (ไม่ต้องรู้พาธล่วงหน้า):
