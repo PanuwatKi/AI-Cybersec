@@ -24,7 +24,13 @@ USE_BRIDGE = True
 MODE = "mic"
 REC_SECONDS = 6      # ใช้กับโหมด non-bridge (auto) เท่านั้น
 MODEL_SIZE = "small"  # tiny < base < small < medium (แม่นขึ้น/ช้าลง)
+OFFLINE = True       # True = บังคับ Whisper ใช้ cache ไม่ต่อเน็ตเลย (สำหรับรันออฟไลน์/พรีเซนต์)
 # ============================================
+
+# บังคับออฟไลน์ ต้องตั้งก่อน import faster_whisper -> กันค้างเพราะรอต่อ HuggingFace
+if OFFLINE:
+    os.environ["HF_HUB_OFFLINE"] = "1"
+    os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
 
 def text_tokenize(text):
@@ -114,9 +120,13 @@ stream = None
 
 
 def transcribe_audio(audio_or_path):
+    t0 = time.time()
+    print("กำลังถอดเสียง...")
     segs, _ = whisper.transcribe(audio_or_path, language="th", vad_filter=True,
                                  beam_size=1, condition_on_previous_text=False)
-    return " ".join(s.text for s in segs).strip()
+    text = " ".join(s.text for s in segs).strip()
+    print("ถอดเสร็จใน %.1f วิ" % (time.time() - t0))
+    return text
 
 
 def analyze(text):
