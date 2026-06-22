@@ -1,5 +1,4 @@
-pandas
+pythainlp
 scikit-learn
 joblib
-pythainlp
-pyserial
+numpy
