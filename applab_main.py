@@ -65,19 +65,14 @@ SCAM_PROMPT = ("บทสนทนาทางโทรศัพท์ ธนา
 REC_SECONDS = 5        # ความยาวอัดต่อรอบ (น้อย = ดีเลย์น้อย)
 MODEL_SIZE = "tiny"    # "tiny"=เร็วสุด · "base"=แม่นกว่าแต่ช้ากว่า (ลองสลับดูได้)
 
-# ขั้น 1: เช็กไมค์ (เพิ่ม "sounddevice" ใน requirements.txt ก่อน)
+# ขั้น 1: เช็กไมค์ — ใช้ "default" (ALSA แปลง rate ให้) ห้ามระบุ hw โดยตรง
+# เพราะไมค์ USB มักไม่รับ 16kHz ตรง ๆ (จะ error invalid sample rate)
 MIC_OK = False
 sd = None
-MIC_DEVICE = None      # ปล่อย None = ใช้ไมค์ default
+MIC_DEVICE = None      # None = ไมค์ default ของระบบ
 try:
     import sounddevice as sd
     print("MICS:", sd.query_devices())
-    # เลือกไมค์ USB ถ้าเจอ (เสียงมักชัดกว่า default)
-    for i, d in enumerate(sd.query_devices()):
-        if d["max_input_channels"] > 0 and "USB" in d["name"]:
-            MIC_DEVICE = i
-            print("ใช้ไมค์ device", i, ":", d["name"])
-            break
     MIC_OK = True
 except Exception as e:
     print("ยังไม่มี sounddevice:", e)
@@ -109,18 +104,23 @@ def loop():
     global _i
     if LIVE:
         show_led("BLUE")  # ฟังอยู่
-        rec = sd.rec(int(REC_SECONDS * 16000), samplerate=16000, channels=1,
-                     dtype="float32", device=MIC_DEVICE)
-        sd.wait()
-        rec = rec.flatten()
-        peak = float(np.max(np.abs(rec)))
-        if peak < 0.02:                      # เงียบเกินไป -> ข้าม กัน Whisper หลอน
-            print("เงียบ... (ไม่มีเสียงพูด)")
+        try:
+            rec = sd.rec(int(REC_SECONDS * 16000), samplerate=16000, channels=1,
+                         dtype="float32", device=MIC_DEVICE)
+            sd.wait()
+            rec = rec.flatten()
+            peak = float(np.max(np.abs(rec)))
+            if peak < 0.02:                  # เงียบเกินไป -> ข้าม กัน Whisper หลอน
+                print("เงียบ... (ไม่มีเสียงพูด)")
+                return
+            rec = rec / peak * 0.95          # ขยายเสียงให้ดังพอ ช่วยถอดแม่นขึ้น
+            segs, _ = whisper.transcribe(rec, language="th", vad_filter=True,
+                                         beam_size=1, condition_on_previous_text=False)
+            text = " ".join(s.text for s in segs).strip()
+        except Exception as e:               # อัด/ถอดพลาด -> ข้ามรอบ ไม่ให้แอปดับ
+            print("อัด/ถอดเสียงพลาด:", e)
+            time.sleep(1)
             return
-        rec = rec / peak * 0.95              # ขยายเสียงให้ดังพอ ช่วยถอดแม่นขึ้น
-        segs, _ = whisper.transcribe(rec, language="th", vad_filter=True,
-                                     beam_size=1, condition_on_previous_text=False)
-        text = " ".join(s.text for s in segs).strip()
         if not text or len([t for t in text_tokenize(normalize_text(text)) if t.strip()]) < 3:
             print("ฟังอยู่... (ข้อมูลยังไม่พอ)")
             return
