@@ -62,12 +62,22 @@ def classify(text):
 # ---------- ลองตั้งค่าไมค์ (ถ้ามี -> โหมดฟังสด) ----------
 SCAM_PROMPT = ("บทสนทนาทางโทรศัพท์ ธนาคาร บัญชี โอนเงิน รหัส OTP ตำรวจ คดี "
                "ฟอกเงิน พัสดุ ลิงก์ ลงทุน กำไร รางวัล")
+REC_SECONDS = 5        # ความยาวอัดต่อรอบ (น้อย = ดีเลย์น้อย)
+MODEL_SIZE = "tiny"    # "tiny"=เร็วสุด · "base"=แม่นกว่าแต่ช้ากว่า (ลองสลับดูได้)
+
 # ขั้น 1: เช็กไมค์ (เพิ่ม "sounddevice" ใน requirements.txt ก่อน)
 MIC_OK = False
 sd = None
+MIC_DEVICE = None      # ปล่อย None = ใช้ไมค์ default
 try:
     import sounddevice as sd
     print("MICS:", sd.query_devices())
+    # เลือกไมค์ USB ถ้าเจอ (เสียงมักชัดกว่า default)
+    for i, d in enumerate(sd.query_devices()):
+        if d["max_input_channels"] > 0 and "USB" in d["name"]:
+            MIC_DEVICE = i
+            print("ใช้ไมค์ device", i, ":", d["name"])
+            break
     MIC_OK = True
 except Exception as e:
     print("ยังไม่มี sounddevice:", e)
@@ -78,7 +88,7 @@ whisper = None
 if MIC_OK:
     try:
         from faster_whisper import WhisperModel
-        whisper = WhisperModel("tiny", device="cpu", compute_type="int8")
+        whisper = WhisperModel(MODEL_SIZE, device="cpu", compute_type="int8", cpu_threads=4)
         LIVE = True
         print("=== LIVE MIC MODE: พูดใส่ไมค์ได้เลย (อัดรอบละ 6 วิ) ===")
     except Exception as e:
@@ -99,15 +109,17 @@ def loop():
     global _i
     if LIVE:
         show_led("BLUE")  # ฟังอยู่
-        rec = sd.rec(int(6 * 16000), samplerate=16000, channels=1, dtype="float32")
+        rec = sd.rec(int(REC_SECONDS * 16000), samplerate=16000, channels=1,
+                     dtype="float32", device=MIC_DEVICE)
         sd.wait()
         rec = rec.flatten()
-        # ถ้าเงียบเกินไป (ไม่มีคนพูด) ข้ามเลย กัน Whisper หลอน
-        if float(np.sqrt(np.mean(rec ** 2))) < 0.01:
+        peak = float(np.max(np.abs(rec)))
+        if peak < 0.02:                      # เงียบเกินไป -> ข้าม กัน Whisper หลอน
             print("เงียบ... (ไม่มีเสียงพูด)")
             return
+        rec = rec / peak * 0.95              # ขยายเสียงให้ดังพอ ช่วยถอดแม่นขึ้น
         segs, _ = whisper.transcribe(rec, language="th", vad_filter=True,
-                                     condition_on_previous_text=False)
+                                     beam_size=1, condition_on_previous_text=False)
         text = " ".join(s.text for s in segs).strip()
         if not text or len([t for t in text_tokenize(normalize_text(text)) if t.strip()]) < 3:
             print("ฟังอยู่... (ข้อมูลยังไม่พอ)")
