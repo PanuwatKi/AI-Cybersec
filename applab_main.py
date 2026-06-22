@@ -12,6 +12,7 @@ import os
 import re
 import time
 import joblib
+import numpy as np
 from arduino.app_utils import App, Leds
 from pythainlp.tokenize import word_tokenize
 
@@ -100,8 +101,13 @@ def loop():
         show_led("BLUE")  # ฟังอยู่
         rec = sd.rec(int(6 * 16000), samplerate=16000, channels=1, dtype="float32")
         sd.wait()
-        segs, _ = whisper.transcribe(rec.flatten(), language="th",
-                                     initial_prompt=SCAM_PROMPT, vad_filter=True)
+        rec = rec.flatten()
+        # ถ้าเงียบเกินไป (ไม่มีคนพูด) ข้ามเลย กัน Whisper หลอน
+        if float(np.sqrt(np.mean(rec ** 2))) < 0.01:
+            print("เงียบ... (ไม่มีเสียงพูด)")
+            return
+        segs, _ = whisper.transcribe(rec, language="th", vad_filter=True,
+                                     condition_on_previous_text=False)
         text = " ".join(s.text for s in segs).strip()
         if not text or len([t for t in text_tokenize(normalize_text(text)) if t.strip()]) < 3:
             print("ฟังอยู่... (ข้อมูลยังไม่พอ)")
