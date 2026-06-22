@@ -50,6 +50,7 @@
 | `requirements.txt` / `requirements-audio.txt` | รายการไลบรารี |
 | `TEAM_GUIDE.md` | คู่มือทีมฉบับเต็ม (การทำงาน, จุดเด่น/ด้อย, แนวตอบกรรมการ) |
 | `PITCH_SCRIPT.md` | สคริปต์นำเสนอ 7 นาที แบ่งบท 3 คน |
+| `PITCH_QA.md` | คำถามกรรมการที่ต้องเตรียม + แนวตอบ |
 | `DAY_PLAN.md` | แผนสิ่งที่ต้องทำในวันแข่ง แยกเป็นวัน |
 | `LEAN_CANVAS.md` | Lean / Idea Canvas |
 | `INFRASTRUCTURE_FUND.md` | ร่างแผนขอทุน depa Infrastructure Fund (15 คะแนน) |
